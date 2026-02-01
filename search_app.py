@@ -28,7 +28,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("📍 SortCart Pro Lookup")
+st.title("📍 Sorting App")
 st.sidebar.header("Search Settings")
 
 # Search Type Selection
@@ -105,4 +105,5 @@ elif (option == "Street Address" and st_name):
  
 
  
+
 
