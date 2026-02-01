@@ -13,7 +13,6 @@ def load_data():
 df, street_list = load_data()
 
 def make_map_link(row, specific_no=None):
-    # Use specific number if provided, otherwise default to the range start
     num = specific_no if specific_no else row['StreetNoMin']
     address = f"{num} {row['StreetName']}, {row['Suburb']}, NSW {row['Postcode']}, Australia"
     query = urllib.parse.quote(address)
@@ -53,7 +52,6 @@ if option == "Street Address":
     if st_name:
         if st_no_input:
             final_display_no = st_no_input
-            # Strip letters for searching (e.g., '1A' -> '1')
             numeric_only = re.sub(r'\D', '', st_no_input)
             
             if numeric_only:
@@ -67,7 +65,6 @@ if option == "Street Address":
                 )
                 results = df[mask].copy()
         else:
-            # Show all records for that street name if no number is provided
             results = df[df['StreetName'] == st_name].copy()
 
 elif option == "Beat Number":
@@ -81,33 +78,28 @@ elif option == "Suburb":
 
 # --- Display Results ---
 if not results.empty:
-    # Hierarchical Sorting: Suburb, then StreetName, then Min No
     results = results.sort_values(by=['Suburb', 'StreetName', 'StreetNoMin'])
-    
-    # Add Map Link Column
     results['Map Link'] = results.apply(lambda row: make_map_link(row, final_display_no), axis=1)
    
     st.success(f"Found {len(results)} record(s)")
     
-    # Reorder columns: Suburb is first
-    display_cols = ['Suburb', 'StreetName', 'StreetNoMin', 'StreetNoMax', 'BeatNo', 'TeamNo', 'Postcode', 'Map Link']
+    # Reorder columns: Postcode is now first
+    display_cols = ['Postcode', 'Suburb', 'StreetName', 'StreetNoMin', 'StreetNoMax', 'BeatNo', 'TeamNo', 'Map Link']
     display_results = results[display_cols]
    
-    # Configure the table
     st.dataframe(
         display_results,
         column_config={
             "Map Link": st.column_config.LinkColumn("Maps", display_text="📍 View"),
             "BeatNo": "Beat",
             "TeamNo": "Team",
-            "StreetNoMin": "From",
-            "StreetNoMax": "To"
+            "StreetNoMin": "Min No",
+            "StreetNoMax": "Max No"
         },
         use_container_width=True,
         hide_index=True
     )
    
-    # Download Button
     csv = display_results.to_csv(index=False).encode('utf-8')
     st.download_button("📥 Export to CSV", data=csv, file_name='search_results.csv', mime='text/csv')
 
@@ -118,6 +110,7 @@ elif (option == "Street Address" and st_name):
  
 
  
+
 
 
 
