@@ -32,7 +32,7 @@ st.title("📍 Sorting App")
 st.sidebar.header("Search Settings")
 
 # Search Type Selection
-option = st.sidebar.selectbox("Search by:", ["Street Address", "ID Number", "Beat Number", "Suburb"])
+option = st.sidebar.selectbox("Search by:", ["Street Address", "Beat Number", "Suburb"])
 
 results = pd.DataFrame()
 searched_no = None
@@ -105,5 +105,6 @@ elif (option == "Street Address" and st_name):
  
 
  
+
 
 
