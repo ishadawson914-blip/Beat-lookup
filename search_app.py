@@ -1,56 +1,107 @@
 import streamlit as st
 import pandas as pd
+import urllib.parse
 
 # Load the data
 @st.cache_data
 def load_data():
     df = pd.read_csv('SortCart.csv')
-    return df
+    # Pre-calculate unique street names for the dropdown
+    unique_streets = sorted(df['StreetName'].unique())
+    return df, unique_streets
 
-df = load_data()
+df, street_list = load_data()
 
-st.title("📍 Address & Beat Lookup App")
-st.write("Enter the details below to find associating information from the SortCart database.")
+# Function to create Google Maps link
+def make_map_link(row, specific_no=None):
+    num = specific_no if specific_no else row['StreetNoMin']
+    address = f"{num} {row['StreetName']}, {row['Suburb']}, NSW {row['Postcode']}, Australia"
+    query = urllib.parse.quote(address)
+    return f"https://www.google.com/maps/search/?api=1&query={query}"
 
-# Sidebar for different search modes
-search_mode = st.sidebar.radio("Search by:", ["Street Address", "ID Number", "Beat Number"])
+st.set_page_config(page_title="SortCart Pro", layout="wide", initial_sidebar_state="expanded")
 
-if search_mode == "Street Address":
-    col1, col2 = st.columns(2)
+# Custom CSS for a cleaner mobile look
+st.markdown("""
+    <style>
+    .stSelectbox div[data-baseweb="select"] { background-color: white; }
+    </style>
+    """, unsafe_allow_html=True)
+
+st.title("📍 SortCart Pro Lookup")
+st.sidebar.header("Search Settings")
+
+# Search Type Selection
+option = st.sidebar.selectbox("Search by:", ["Street Address", "ID Number", "Beat Number", "Suburb"])
+
+results = pd.DataFrame()
+searched_no = None
+
+if option == "Street Address":
+    col1, col2 = st.columns([3, 1])
     with col1:
-        street_input = st.text_input("Enter Street Name (e.g., Ashby Avenue)").upper()
+        # Searchable dropdown: user types 2 letters and it filters
+        st_name = st.selectbox(
+            "Start typing Street Name...",
+            options=street_list,
+            index=None,
+            placeholder="e.g. ASHBY"
+        )
     with col2:
-        number_input = st.number_input("Enter Street Number", min_value=1, step=1)
-
-    if street_input:
-        # Filter for street and parity (Even/Odd)
-        parity = 2 if number_input % 2 == 0 else 1
-        results = df[
-            ((df['StreetName'].str.upper() == street_input) | (df['StreetNameShort'].str.upper() == street_input)) &
+        st_no = st.number_input("Number", min_value=1, value=1)
+        searched_no = st_no
+   
+    if st_name:
+        parity = 2 if st_no % 2 == 0 else 1
+        mask = (
+            (df['StreetName'] == st_name) &
             (df['EvenOdd'] == parity) &
-            (df['StreetNoMin'] <= number_input) &
-            (df['StreetNoMax'] >= number_input)
-        ]
-       
-        if not results.empty:
-            st.success(f"Found {len(results)} match(es)!")
-            st.dataframe(results)
-        else:
-            st.warning("No matches found for that address.")
+            (df['StreetNoMin'] <= st_no) &
+            (df['StreetNoMax'] >= st_no)
+        )
+        results = df[mask].copy()
 
-elif search_mode == "ID Number":
-    id_input = st.text_input("Enter ID Number(s) - separate by comma for multiple")
-    if id_input:
-        ids = [int(i.strip()) for i in id_input.split(',')]
-        results = df[df['id'].isin(ids)]
-        st.dataframe(results)
+elif option == "ID Number":
+    id_val = st.number_input("Enter ID", min_value=1)
+    results = df[df['id'] == id_val].copy()
 
-elif search_mode == "Beat Number":
-    beat_input = st.number_input("Enter Beat Number", min_value=0, step=1)
-    if beat_input:
-        results = df[df['BeatNo'] == beat_input]
-        st.dataframe(results)
+elif option == "Beat Number":
+    beat_val = st.sidebar.number_input("Enter Beat Number", min_value=1)
+    results = df[df['BeatNo'] == beat_val].copy()
 
-st.divider()
-st.caption("Data source: SortCart.csv")
+elif option == "Suburb":
+    suburb_list = sorted(df['Suburb'].unique())
+    sub_val = st.selectbox("Select Suburb", suburb_list, index=None, placeholder="Choose a suburb")
+    results = df[df['Suburb'] == sub_val].copy()
+
+# Display Results
+if not results.empty:
+    # Add Map Link Column
+    results['Map Link'] = results.apply(lambda row: make_map_link(row, searched_no), axis=1)
+   
+    st.success(f"Found {len(results)} record(s)")
+   
+    # Configure the table
+    st.dataframe(
+        results,
+        column_config={
+            "Map Link": st.column_config.LinkColumn("Maps", display_text="📍 View"),
+            "id": "ID",
+            "StreetNoMin": "Min No",
+            "StreetNoMax": "Max No",
+            "BeatNo": "Beat",
+            "TeamNo": "Team"
+        },
+        use_container_width=True,
+        hide_index=True
+    )
+   
+    # Download Button
+    csv = results.to_csv(index=False).encode('utf-8')
+    st.download_button("📥 Export to CSV", data=csv, file_name='sortcart_results.csv', mime='text/csv')
+
+elif (option == "Street Address" and st_name):
+    st.warning(f"No entry found for {st_no} {st_name}. Check if the number is Even/Odd correctly.")
+ 
+
  
