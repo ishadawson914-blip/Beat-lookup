@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import urllib.parse
 import numpy as np
+import re
 from PIL import Image
 
 # We use easyocr for the address reading
@@ -38,11 +39,11 @@ def make_map_link(row, specific_no=None):
 st.set_page_config(page_title="Leightonfield", layout="wide", initial_sidebar_state="expanded")
 
 # Custom CSS for a cleaner mobile look
-st.markdown("""
+st.markdown('''
     <style>
     .stSelectbox div[data-baseweb="select"] { background-color: white; }
     </style>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
 st.title("📍 Sorting App with Photo Scan")
 
@@ -58,19 +59,39 @@ if OCR_AVAILABLE:
             img_np = np.array(img)
             with st.spinner("Analyzing image..."):
                 results_ocr = reader.readtext(img_np)
+                # Sort OCR results by their vertical position then horizontal
+                results_ocr.sort(key=lambda x: (x[0][0][1], x[0][0][0]))
                 full_text = " ".join([res[1].upper() for res in results_ocr])
                 st.info(f"Detected Text: {full_text}")
 
-                # Find street in text
+                # Improved extraction logic
+                # 1. Find the street name first
+                found_street = None
                 for street in street_list:
                     if street in full_text:
-                        scanned_street = street
-                        # Simple digit extraction
-                        words = full_text.split()
-                        for word in words:
-                            if word.isdigit():
-                                scanned_no = word
-                        break
+                        # Find the longest matching street name to be more specific
+                        if found_street is None or len(street) > len(found_street):
+                            found_street = street
+                
+                if found_street:
+                    scanned_street = found_street
+                    # 2. Look for a number near the street name
+                    # Look for digits in the 25 characters preceding the street name
+                    pattern = re.compile(r'(\d+)')
+                    idx = full_text.find(found_street)
+                    
+                    # Search in a window before the street name
+                    prefix = full_text[max(0, idx-25):idx]
+                    numbers = pattern.findall(prefix)
+                    if numbers:
+                        # Take the last number before the street name (most likely house number)
+                        scanned_no = numbers[-1]
+                    else:
+                        # Fallback: check shortly after the street name
+                        suffix = full_text[idx + len(found_street): idx + len(found_street) + 15]
+                        numbers_suffix = pattern.findall(suffix)
+                        if numbers_suffix:
+                            scanned_no = numbers_suffix[0]
 else:
     st.warning("OCR libraries not detected. Please check requirements.txt")
 
@@ -150,6 +171,7 @@ elif (option == "Street Address" and st_name):
  
 
  
+
 
 
 
