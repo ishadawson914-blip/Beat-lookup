@@ -48,7 +48,6 @@ if option == "Street Address":
             placeholder="e.g. ASHBY"
         )
     with col2:
-        # Use a text input or allow 0/None to represent "no number"
         st_no_str = st.text_input("Number (optional)", value="")
         if st_no_str.isdigit():
             searched_no = int(st_no_str)
@@ -57,7 +56,6 @@ if option == "Street Address":
    
     if st_name:
         if searched_no is not None:
-            # Filter by specific number and parity
             parity = 2 if searched_no % 2 == 0 else 1
             mask = (
                 (df['StreetName'] == st_name) &
@@ -67,11 +65,10 @@ if option == "Street Address":
             )
             results = df[mask].copy()
         else:
-            # Show all records for that street name if no number is provided
             results = df[df['StreetName'] == st_name].copy()
 
 elif option == "Beat Number":
-    beat_val = st.sidebar.number_input("Enter Round Number", min_value=1011)
+    beat_val = st.sidebar.number_input("Enter Beat Number", min_value=1)
     results = df[df['BeatNo'] == beat_val].copy()
 
 elif option == "Suburb":
@@ -81,15 +78,15 @@ elif option == "Suburb":
 
 # Display Results
 if not results.empty:
-    # Sort results by StreetName and StreetNoMin
-    results = results.sort_values(by=['StreetName', 'StreetNoMin'])
+    # UPDATED SORTING: Suburb, then StreetName, then StreetNoMin
+    results = results.sort_values(by=['Suburb', 'StreetName', 'StreetNoMin'])
 
     # Add Map Link Column
     results['Map Link'] = results.apply(lambda row: make_map_link(row, searched_no), axis=1)
    
     st.success(f"Found {len(results)} record(s)")
     
-    # Select only the columns requested: StreetName, Beat, Team, Postcode, Suburb, Maps, MaxNo, MinNo
+    # Column selection
     display_cols = ['StreetName', 'StreetNoMin', 'StreetNoMax', 'BeatNo', 'TeamNo', 'Postcode', 'Suburb', 'Map Link']
     display_results = results[display_cols]
    
@@ -114,9 +111,11 @@ if not results.empty:
 elif (option == "Street Address" and st_name):
     msg = f"No entry found for {searched_no} {st_name}" if searched_no else f"No records found for {st_name}"
     st.warning(msg)
+    
  
 
  
+
 
 
 
