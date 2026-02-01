@@ -80,10 +80,15 @@ if not results.empty:
     results['Map Link'] = results.apply(lambda row: make_map_link(row, searched_no), axis=1)
    
     st.success(f"Found {len(results)} record(s)")
+    
+    # Select only the columns requested by the user
+    # Maps corresponds to the "Map Link" column we created
+    display_cols = ['StreetName', 'BeatNo', 'TeamNo', 'Postcode', 'Suburb', 'Map Link']
+    display_results = results[display_cols]
    
     # Configure the table
     st.dataframe(
-        results,
+        display_results,
         column_config={
             "Map Link": st.column_config.LinkColumn("Maps", display_text="📍 View"),
             "BeatNo": "Beat",
@@ -94,14 +99,15 @@ if not results.empty:
     )
    
     # Download Button
-    csv = results.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Export to CSV", data=csv, file_name='sortcart_results.csv', mime='text/csv')
+    csv = display_results.to_csv(index=False).encode('utf-8')
+    st.download_button("📥 Export to CSV", data=csv, file_name='search_results.csv', mime='text/csv')
 
 elif (option == "Street Address" and st_name):
     st.warning(f"No entry found for {st_no} {st_name}. Check if the number is Even/Odd correctly.")
  
 
  
+
 
 
 
