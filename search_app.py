@@ -19,7 +19,7 @@ def make_map_link(row, specific_no=None):
     query = urllib.parse.quote(address)
     return f"https://www.google.com/maps/search/?api=1&query={query}"
 
-st.set_page_config(page_title="SortCart Pro", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Leightonfield", layout="wide", initial_sidebar_state="expanded")
 
 # Custom CSS for a cleaner mobile look
 st.markdown("""
@@ -105,3 +105,4 @@ elif (option == "Street Address" and st_name):
  
 
  
+
