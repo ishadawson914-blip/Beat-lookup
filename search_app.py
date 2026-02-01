@@ -86,9 +86,6 @@ if not results.empty:
         results,
         column_config={
             "Map Link": st.column_config.LinkColumn("Maps", display_text="📍 View"),
-            "id": "ID",
-            "StreetNoMin": "Min No",
-            "StreetNoMax": "Max No",
             "BeatNo": "Beat",
             "TeamNo": "Team"
         },
@@ -105,6 +102,7 @@ elif (option == "Street Address" and st_name):
  
 
  
+
 
 
 
