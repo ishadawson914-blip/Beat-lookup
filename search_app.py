@@ -68,7 +68,7 @@ if option == "Street Address":
             results = df[df['StreetName'] == st_name].copy()
 
 elif option == "Beat Number":
-    beat_val = st.sidebar.number_input("Enter Beat Number", min_value=1)
+    beat_val = st.sidebar.number_input("Enter Beat Number", min_value=1011)
     results = df[df['BeatNo'] == beat_val].copy()
 
 elif option == "Suburb":
@@ -115,6 +115,7 @@ elif (option == "Street Address" and st_name):
  
 
  
+
 
 
 
