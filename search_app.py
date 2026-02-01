@@ -14,6 +14,7 @@ df, street_list = load_data()
 
 # Function to create Google Maps link
 def make_map_link(row, specific_no=None):
+    # Use specific number if provided, otherwise default to the range start
     num = specific_no if specific_no else row['StreetNoMin']
     address = f"{num} {row['StreetName']}, {row['Suburb']}, NSW {row['Postcode']}, Australia"
     query = urllib.parse.quote(address)
@@ -40,7 +41,6 @@ searched_no = None
 if option == "Street Address":
     col1, col2 = st.columns([3, 1])
     with col1:
-        # Searchable dropdown: user types 2 letters and it filters
         st_name = st.selectbox(
             "Start typing Street Name...",
             options=street_list,
@@ -48,22 +48,27 @@ if option == "Street Address":
             placeholder="e.g. ASHBY"
         )
     with col2:
-        st_no = st.number_input("Number", min_value=1, value=1)
-        searched_no = st_no
+        # Use a text input or allow 0/None to represent "no number"
+        st_no_str = st.text_input("Number (optional)", value="")
+        if st_no_str.isdigit():
+            searched_no = int(st_no_str)
+        else:
+            searched_no = None
    
     if st_name:
-        parity = 2 if st_no % 2 == 0 else 1
-        mask = (
-            (df['StreetName'] == st_name) &
-            (df['EvenOdd'] == parity) &
-            (df['StreetNoMin'] <= st_no) &
-            (df['StreetNoMax'] >= st_no)
-        )
-        results = df[mask].copy()
-
-elif option == "ID Number":
-    id_val = st.number_input("Enter ID", min_value=1)
-    results = df[df['id'] == id_val].copy()
+        if searched_no is not None:
+            # Filter by specific number and parity
+            parity = 2 if searched_no % 2 == 0 else 1
+            mask = (
+                (df['StreetName'] == st_name) &
+                (df['EvenOdd'] == parity) &
+                (df['StreetNoMin'] <= searched_no) &
+                (df['StreetNoMax'] >= searched_no)
+            )
+            results = df[mask].copy()
+        else:
+            # Show all records for that street name if no number is provided
+            results = df[df['StreetName'] == st_name].copy()
 
 elif option == "Beat Number":
     beat_val = st.sidebar.number_input("Enter Beat Number", min_value=1)
@@ -81,9 +86,8 @@ if not results.empty:
    
     st.success(f"Found {len(results)} record(s)")
     
-    # Select only the columns requested by the user
-    # Maps corresponds to the "Map Link" column we created
-    display_cols = ['StreetName', 'BeatNo', 'TeamNo', 'Postcode', 'Suburb', 'Map Link']
+    # Select only the columns requested: StreetName, Beat, Team, Postcode, Suburb, Maps, MaxNo, MinNo
+    display_cols = ['StreetName', 'StreetNoMin', 'StreetNoMax', 'BeatNo', 'TeamNo', 'Postcode', 'Suburb', 'Map Link']
     display_results = results[display_cols]
    
     # Configure the table
@@ -92,7 +96,9 @@ if not results.empty:
         column_config={
             "Map Link": st.column_config.LinkColumn("Maps", display_text="📍 View"),
             "BeatNo": "Beat",
-            "TeamNo": "Team"
+            "TeamNo": "Team",
+            "StreetNoMin": "Min No",
+            "StreetNoMax": "Max No"
         },
         use_container_width=True,
         hide_index=True
@@ -103,10 +109,12 @@ if not results.empty:
     st.download_button("📥 Export to CSV", data=csv, file_name='search_results.csv', mime='text/csv')
 
 elif (option == "Street Address" and st_name):
-    st.warning(f"No entry found for {st_no} {st_name}. Check if the number is Even/Odd correctly.")
+    msg = f"No entry found for {searched_no} {st_name}" if searched_no else f"No records found for {st_name}"
+    st.warning(msg)
  
 
  
+
 
 
 
