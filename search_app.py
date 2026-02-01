@@ -16,7 +16,6 @@ except ImportError:
 @st.cache_resource
 def load_ocr():
     if OCR_AVAILABLE:
-        # This downloads the models on the first run
         return easyocr.Reader(['en'])
     return None
 
@@ -38,13 +37,6 @@ def make_map_link(row, specific_no=None):
 
 st.set_page_config(page_title="Leightonfield", layout="wide", initial_sidebar_state="expanded")
 
-# Custom CSS for a cleaner mobile look
-st.markdown('''
-    <style>
-    .stSelectbox div[data-baseweb="select"] { background-color: white; }
-    </style>
-    ''', unsafe_allow_html=True)
-
 st.title("📍 Sorting App with Photo Scan")
 
 # --- OCR Camera Section ---
@@ -52,55 +44,43 @@ scanned_street = None
 scanned_no = None
 
 if OCR_AVAILABLE:
-    with st.expander("📸 Scan Address from Photo (Label)"):
-        img_file = st.camera_input("Take a photo of the address")
+    with st.expander("📸 Scan Address from Photo"):
+        img_file = st.camera_input("Take a photo of the address label")
         if img_file:
             img = Image.open(img_file)
             img_np = np.array(img)
-            with st.spinner("Analyzing image..."):
+            with st.spinner("Analyzing address..."):
                 results_ocr = reader.readtext(img_np)
-                # Sort OCR results by their vertical position then horizontal
                 results_ocr.sort(key=lambda x: (x[0][0][1], x[0][0][0]))
                 full_text = " ".join([res[1].upper() for res in results_ocr])
                 st.info(f"Detected Text: {full_text}")
 
-                # Improved extraction logic
-                # 1. Find the street name first
+                # 1. Find the street name
                 found_street = None
                 for street in street_list:
                     if street in full_text:
-                        # Find the longest matching street name to be more specific
                         if found_street is None or len(street) > len(found_street):
                             found_street = street
                 
                 if found_street:
                     scanned_street = found_street
-                    # 2. Look for a number near the street name
-                    # Look for digits in the 25 characters preceding the street name
-                    pattern = re.compile(r'(\d+)')
                     idx = full_text.find(found_street)
+                    prefix = full_text[max(0, idx-35):idx]
                     
-                    # Search in a window before the street name
-                    prefix = full_text[max(0, idx-25):idx]
-                    numbers = pattern.findall(prefix)
-                    if numbers:
-                        # Take the last number before the street name (most likely house number)
-                        scanned_no = numbers[-1]
-                    else:
-                        # Fallback: check shortly after the street name
-                        suffix = full_text[idx + len(found_street): idx + len(found_street) + 15]
-                        numbers_suffix = pattern.findall(suffix)
-                        if numbers_suffix:
-                            scanned_no = numbers_suffix[0]
-else:
-    st.warning("OCR libraries not detected. Please check requirements.txt")
+                    # Logic for Unit/Number and Number//Number
+                    # Captures the second number if a / or // is present
+                    pattern = re.compile(r'(?:UNIT\s*\d+\s*/*\s*|(?:\d+)\s*//?\s*)(\d+[A-Z]?)|(\d+[A-Z]?)')
+                    matches = pattern.findall(prefix)
+                    if matches:
+                        last_match = matches[-1]
+                        scanned_no = last_match[0] if last_match[0] else last_match[1]
 
 # --- Search Settings ---
 st.sidebar.header("Search Settings")
 option = st.sidebar.selectbox("Search by:", ["Street Address", "Beat Number", "Suburb"])
 
 results = pd.DataFrame()
-searched_no = None
+final_display_no = None
 
 if option == "Street Address":
     col1, col2 = st.columns([3, 1])
@@ -108,17 +88,18 @@ if option == "Street Address":
         st_name = st.selectbox(
             "Street Name",
             options=street_list,
-            index=street_list.index(scanned_street) if scanned_street in street_list else None,
-            placeholder="Select or scan a street"
+            index=street_list.index(scanned_street) if scanned_street in street_list else None
         )
     with col2:
-        default_no = scanned_no if scanned_no else ""
-        st_no_str = st.text_input("Number (optional)", value=default_no)
-        if st_no_str.isdigit():
-            searched_no = int(st_no_str)
+        st_no_input = st.text_input("Number", value=scanned_no if scanned_no else "")
    
-    if st_name:
-        if searched_no is not None:
+    if st_name and st_no_input:
+        # CLEANING: If user enters '1A', we use '1' for the query
+        final_display_no = st_no_input
+        numeric_only = re.sub(r'\D', '', st_no_input)
+        
+        if numeric_only:
+            searched_no = int(numeric_only)
             parity = 2 if searched_no % 2 == 0 else 1
             mask = (
                 (df['StreetName'] == st_name) &
@@ -127,8 +108,6 @@ if option == "Street Address":
                 (df['StreetNoMax'] >= searched_no)
             )
             results = df[mask].copy()
-        else:
-            results = df[df['StreetName'] == st_name].copy()
 
 elif option == "Beat Number":
     beat_val = st.sidebar.number_input("Enter Beat Number", min_value=1, value=1011)
@@ -136,23 +115,19 @@ elif option == "Beat Number":
 
 elif option == "Suburb":
     suburb_list = sorted(df['Suburb'].unique())
-    sub_val = st.selectbox("Select Suburb", suburb_list, index=None, placeholder="Choose a suburb")
+    sub_val = st.selectbox("Select Suburb", suburb_list)
     results = df[df['Suburb'] == sub_val].copy()
 
 # --- Display Results ---
 if not results.empty:
-    # Hierarchical Sorting
     results = results.sort_values(by=['Suburb', 'StreetName', 'StreetNoMin'])
-    results['Map Link'] = results.apply(lambda row: make_map_link(row, searched_no), axis=1)
+    results['Map Link'] = results.apply(lambda row: make_map_link(row, final_display_no), axis=1)
    
     st.success(f"Found {len(results)} record(s)")
     
-    # Column selection: Suburb is first
     display_cols = ['Suburb', 'StreetName', 'StreetNoMin', 'StreetNoMax', 'BeatNo', 'TeamNo', 'Postcode', 'Map Link']
-    display_results = results[display_cols]
-   
     st.dataframe(
-        display_results,
+        results[display_cols],
         column_config={
             "Map Link": st.column_config.LinkColumn("Maps", display_text="📍 View"),
             "BeatNo": "Beat", "TeamNo": "Team",
@@ -161,16 +136,11 @@ if not results.empty:
         use_container_width=True,
         hide_index=True
     )
-   
-    csv = display_results.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Export to CSV", data=csv, file_name='search_results.csv', mime='text/csv')
-
-elif (option == "Street Address" and st_name):
-    st.warning("No entry found. Please check the street number.")
     
  
 
  
+
 
 
 
