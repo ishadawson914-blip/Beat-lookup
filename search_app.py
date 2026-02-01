@@ -68,7 +68,8 @@ if option == "Street Address":
             results = df[df['StreetName'] == st_name].copy()
 
 elif option == "Beat Number":
-    beat_val = st.sidebar.number_input("Enter Beat Number", min_value=1011)
+    # Set default value to 1011
+    beat_val = st.sidebar.number_input("Enter Beat Number", min_value=1, value=1011)
     results = df[df['BeatNo'] == beat_val].copy()
 
 elif option == "Suburb":
@@ -86,8 +87,8 @@ if not results.empty:
    
     st.success(f"Found {len(results)} record(s)")
     
-    # Column selection
-    display_cols = ['StreetName', 'StreetNoMin', 'StreetNoMax', 'BeatNo', 'TeamNo', 'Postcode', 'Suburb', 'Map Link']
+    # Reorder columns: Suburb is now first
+    display_cols = ['Suburb', 'StreetName', 'StreetNoMin', 'StreetNoMax', 'BeatNo', 'TeamNo', 'Postcode', 'Map Link']
     display_results = results[display_cols]
    
     # Configure the table
@@ -115,6 +116,7 @@ elif (option == "Street Address" and st_name):
  
 
  
+
 
 
 
