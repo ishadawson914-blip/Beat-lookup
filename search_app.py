@@ -83,24 +83,29 @@ if not results.empty:
    
     st.success(f"Found {len(results)} record(s)")
     
-    # Reorder columns: Postcode is now first
-    display_cols = ['Postcode', 'Suburb', 'StreetName', 'StreetNoMin', 'StreetNoMax', 'BeatNo', 'TeamNo', 'Map Link']
+    # Reordered Columns: BeatNo (Round), Postcode, Suburb, StreetName, StreetNoMin (From), StreetNoMax (To), Map Link
+    display_cols = ['BeatNo', 'Postcode', 'Suburb', 'StreetName', 'StreetNoMin', 'StreetNoMax', 'Map Link']
     display_results = results[display_cols]
    
     st.dataframe(
         display_results,
         column_config={
-            "Map Link": st.column_config.LinkColumn("Maps", display_text="📍 View"),
-            "BeatNo": "Beat",
-            "TeamNo": "Team",
-            "StreetNoMin": "Min No",
-            "StreetNoMax": "Max No"
+            "BeatNo": "Round",
+            "Postcode": "Post Code",
+            "StreetNoMin": "From",
+            "StreetNoMax": "To",
+            "Map Link": st.column_config.LinkColumn("Maps", display_text="📍 View")
         },
         use_container_width=True,
         hide_index=True
     )
    
-    csv = display_results.to_csv(index=False).encode('utf-8')
+    csv = display_results.rename(columns={
+        'BeatNo': 'Round',
+        'Postcode': 'Post Code',
+        'StreetNoMin': 'From',
+        'StreetNoMax': 'To'
+    }).to_csv(index=False).encode('utf-8')
     st.download_button("📥 Export to CSV", data=csv, file_name='search_results.csv', mime='text/csv')
 
 elif (option == "Street Address" and st_name):
@@ -110,6 +115,7 @@ elif (option == "Street Address" and st_name):
  
 
  
+
 
 
 
