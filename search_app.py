@@ -81,6 +81,9 @@ elif option == "Suburb":
 
 # Display Results
 if not results.empty:
+    # Sort results by StreetName and StreetNoMin
+    results = results.sort_values(by=['StreetName', 'StreetNoMin'])
+
     # Add Map Link Column
     results['Map Link'] = results.apply(lambda row: make_map_link(row, searched_no), axis=1)
    
@@ -95,10 +98,10 @@ if not results.empty:
         display_results,
         column_config={
             "Map Link": st.column_config.LinkColumn("Maps", display_text="📍 View"),
-            "BeatNo": "Round",
+            "BeatNo": "Beat",
             "TeamNo": "Team",
-            "StreetNoMin": "From",
-            "StreetNoMax": "To"
+            "StreetNoMin": "Min No",
+            "StreetNoMax": "Max No"
         },
         use_container_width=True,
         hide_index=True
@@ -114,6 +117,7 @@ elif (option == "Street Address" and st_name):
  
 
  
+
 
 
 
